@@ -1,0 +1,208 @@
+CREATE DATABASE IF NOT EXISTS viajes_chile
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE viajes_chile;
+
+-- --------------------------------------------------------
+-- Estructura de tabla para `products`
+-- --------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS products (
+  id VARCHAR(32) NOT NULL PRIMARY KEY,
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(180) NOT NULL,
+  destination VARCHAR(120) NOT NULL,
+  distance_km INT UNSIGNED NOT NULL DEFAULT 0,
+  price INT UNSIGNED NOT NULL,
+  type VARCHAR(60) NOT NULL,
+  status ENUM('Activo', 'Agotado') NOT NULL DEFAULT 'Activo',
+  image VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  gallery LONGTEXT NOT NULL,
+  discount_percent TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  schedules LONGTEXT NOT NULL DEFAULT '[]',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS discount_percent TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS schedules LONGTEXT NOT NULL DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS distance_km INT UNSIGNED NOT NULL DEFAULT 0;
+
+-- --------------------------------------------------------
+-- Estructura de tabla para `users`
+-- --------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  telephone VARCHAR(40) NOT NULL DEFAULT '',
+  region VARCHAR(100) NOT NULL DEFAULT '',
+  commune VARCHAR(100) NOT NULL DEFAULT '',
+  role ENUM('customer', 'seller', 'admin') NOT NULL DEFAULT 'customer',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_refresh_tokens_expires_at (expires_at)
+);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_password_reset_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_password_reset_expires_at (expires_at)
+);
+
+-- --------------------------------------------------------
+-- Estructura de tabla para `contact_messages`
+-- --------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  message TEXT NOT NULL,
+  type ENUM('mensaje', 'reclamo') NOT NULL DEFAULT 'mensaje',
+  status ENUM('no_leido', 'leido', 'aplicado', 'archivado', 'eliminado') NOT NULL DEFAULT 'no_leido',
+  admin_notes TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+ALTER TABLE contact_messages
+  ADD COLUMN IF NOT EXISTS type ENUM('mensaje', 'reclamo') NOT NULL DEFAULT 'mensaje',
+  ADD COLUMN IF NOT EXISTS status ENUM('no_leido', 'leido', 'aplicado', 'archivado', 'eliminado') NOT NULL DEFAULT 'no_leido',
+  ADD COLUMN IF NOT EXISTS admin_notes TEXT NULL,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS sales (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  sale_code CHAR(32) NOT NULL UNIQUE,
+  total_amount INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  sale_id BIGINT UNSIGNED NOT NULL,
+  ticket_code CHAR(32) NOT NULL UNIQUE,
+  product_id VARCHAR(32) NOT NULL,
+  trip_title VARCHAR(180) NOT NULL,
+  destination VARCHAR(120) NOT NULL,
+  distance_km INT UNSIGNED NOT NULL DEFAULT 0,
+  schedule_date DATE NOT NULL,
+  departure_time TIME NOT NULL,
+  platform VARCHAR(40) NOT NULL,
+  seat_number SMALLINT UNSIGNED NOT NULL,
+  passenger_name VARCHAR(150) NOT NULL,
+  passenger_rut VARCHAR(20) NOT NULL,
+  original_price INT UNSIGNED NOT NULL,
+  discount_percent TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  price_paid INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT tickets_sale_fk FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+  KEY ticket_schedule_seat (product_id, schedule_date, departure_time, seat_number)
+);
+
+-- --------------------------------------------------------
+-- Operación: cancelaciones, flota (buses) y registro de sucesos
+-- --------------------------------------------------------
+
+ALTER TABLE sales
+  ADD COLUMN IF NOT EXISTS status ENUM('pagada', 'parcial', 'anulada') NOT NULL DEFAULT 'pagada',
+  ADD COLUMN IF NOT EXISTS user_id BIGINT UNSIGNED NULL;
+
+ALTER TABLE tickets
+  ADD COLUMN IF NOT EXISTS status ENUM('activo', 'cancelado') NOT NULL DEFAULT 'activo',
+  ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP NULL DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS cancel_reason VARCHAR(300) NULL,
+  ADD COLUMN IF NOT EXISTS distance_km INT UNSIGNED NOT NULL DEFAULT 0;
+
+UPDATE tickets t
+JOIN products p ON p.id = t.product_id
+SET t.distance_km = p.distance_km
+WHERE t.distance_km = 0;
+
+ALTER TABLE tickets DROP INDEX IF EXISTS ticket_schedule_seat;
+ALTER TABLE tickets ADD INDEX IF NOT EXISTS ticket_schedule_seat (product_id, schedule_date, departure_time, seat_number);
+
+CREATE TABLE IF NOT EXISTS fleet_events (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  vehicle VARCHAR(60) NOT NULL,
+  description VARCHAR(500) NOT NULL,
+  status ENUM('con_falla', 'en_servicio_tecnico', 'reparado', 'fuera_de_servicio') NOT NULL DEFAULT 'con_falla',
+  admin_notes TEXT NULL,
+  reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP NULL DEFAULT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS activity_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(30) NOT NULL,
+  description VARCHAR(500) NOT NULL,
+  actor VARCHAR(150) NOT NULL DEFAULT 'Sistema',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- --------------------------------------------------------
+-- Inserción de datos para `products`
+-- --------------------------------------------------------
+
+INSERT INTO products (id, slug, title, destination, distance_km, price, type, status, image, description, gallery) VALUES
+('PROD-01', 'puertomontt', 'Santiago - Puerto Montt', 'Puerto Montt', 1030, 35000, 'Salón Cama', 'Activo', 'Mont.jpg', 'La puerta de entrada a la Patagonia chilena y la Región de Los Lagos. Viaje directo con Wi-Fi y puertos USB.', '["Mont.jpg","Mont2.jpg"]'),
+('PROD-02', 'valparaiso', 'Santiago - Valparaíso', 'Valparaíso', 120, 10000, 'Clásico', 'Activo', 'Valpo.webp', 'Un destino bohemio e histórico, lleno de cerros con murales, arquitectura colorida y miradores al Pacífico.', '["Valpo.webp","valpo2.jpg"]'),
+('PROD-03', 'laserena', 'Santiago - La Serena', 'La Serena', 475, 18500, 'Semi Cama', 'Activo', 'Serena.webp', 'Destino costero de ritmo sereno, famoso por su arquitectura neocolonial y el icónico Faro Monumental.', '["Serena.webp","faro.jpg"]'),
+('PROD-04', 'concepcion', 'Santiago - Concepción', 'Concepción', 500, 22000, 'Salón Cama', 'Activo', 'Gran_Concepcion.jpg', 'La capital universitaria y del rock chileno, con servicios diurnos y nocturnos.', '["Gran_Concepcion.jpg","Conce2.jpg"]'),
+('PROD-05', 'pucon', 'Santiago - Pucón', 'Pucón', 785, 28000, 'Salón Cama', 'Agotado', 'Temuco.jpg', 'El epicentro del turismo de aventura en la Región de La Araucanía.', '["Temuco.jpg","Pucon2.jpg"]'),
+('PROD-06', 'chiloe', 'Santiago - Chiloé', 'Chiloé', 1150, 25000, 'Salón Cama', 'Activo', 'Chilote.webp', 'Un viaje entre mitología, paisajes insulares verdes y una identidad cultural única.', '["Chilote.webp","Chiloe2.jpg"]'),
+('PROD-07', 'talca', 'Santiago - Talca', 'Talca', 255, 20000, 'Semi Cama', 'Activo', 'Talca.jpg', 'Corazón histórico y administrativo de la Región del Maule. Viaje rápido por la Ruta 5 Sur.', '["Talca.jpg","TalcaGod.jpg"]'),
+('PROD-08', 'pichilemu', 'Santiago - Pichilemu', 'Pichilemu', 210, 20000, 'Clásico', 'Activo', 'Pichilemu.jpg', 'La capital chilena del surf, reconocida mundialmente. Ideal para escapadas de fin de semana.', '["Pichilemu.jpg","Pichilemu2.jpg"]'),
+('PROD-09', 'quintero', 'Santiago - Quintero', 'Quintero', 160, 15000, 'Clásico', 'Activo', 'quintero.jpg', 'Tradicional ciudad costera de la zona central, conocida por sus numerosas playas.', '["quintero.jpg","quintero2.jpg"]'),
+('PROD-10', 'vina', 'Santiago - Viña del Mar', 'Viña del Mar', 130, 15000, 'Semi Cama', 'Activo', 'Vinia.jpg', 'La popular Ciudad Jardín, reconocida por su amplia infraestructura turística.', '["Vinia.jpg","Flores.jpg"]'),
+('PROD-11', 'antofagasta', 'Santiago - Antofagasta', 'Antofagasta', 1365, 30000, 'Premium', 'Activo', 'Antofa.jpg', 'La Perla del Norte: ciudad costera e industrial con servicio a bordo.', '["Antofa.jpg","Anto2.jpg"]'),
+('PROD-12', 'arica', 'Santiago - Arica', 'Arica', 2050, 35000, 'Premium', 'Activo', 'Arica.jpg', 'La Ciudad de la Eterna Primavera, con clima templado y asientos cama de 180°.', '["Arica.jpg","Arica2.jpg"]'),
+('PROD-13', 'valdivia', 'Santiago - Valdivia', 'Valdivia', 848, 22000, 'Salón Cama', 'Activo', 'Valdivia.jpeg', 'Ríos navegables, bosques y arquitectura patrimonial en el corazón de la Región de Los Ríos.', '["Valdivia.jpeg","Valdi.JPG"]')
+ON DUPLICATE KEY UPDATE slug = VALUES(slug), distance_km = VALUES(distance_km);
+
+-- --------------------------------------------------------
+-- Inserción de usuarios por defecto
+-- --------------------------------------------------------
+
+INSERT INTO users (name, email, password_hash, telephone, region, commune, role) VALUES
+(
+  'guillermo',
+  'guillermo@gmail.com',
+  '$2y$10$U.yT7q1bC7X5S7j92l9Vge606dO7C31sN30P9bQd8gO1H6I9.yvOa',
+  '+56912345678',
+  'Región Metropolitana',
+  'La Florida',
+  'customer'
+),
+(
+  'maria',
+  'cote@gmail.com',
+  '$2b$10$qWHIozwGhm2xzB5YWSmezuCiGpduVTxw/5DI9u/kAjLl3UlQOmPs.',
+  '+56987654321',
+  'Región Metropolitana',
+  'La Florida',
+  'customer'
+)
+ON DUPLICATE KEY UPDATE 
+  name = VALUES(name),
+  password_hash = VALUES(password_hash),
+  region = VALUES(region),
+  commune = VALUES(commune);
