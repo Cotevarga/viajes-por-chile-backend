@@ -4,9 +4,19 @@ API REST de Viajes por Chile, desarrollada con Spring Boot. El proyecto requiere
 
 ## Requisitos
 
-- JDK 17.
+- JDK 25.
 - Maven 3.8 o superior.
 - MariaDB disponible en `localhost:3308` (valor predeterminado local).
+
+Maven usa el JDK indicado por `JAVA_HOME`. En PowerShell, configura la ruta de tu instalación de JDK 25 para la terminal actual:
+
+```powershell
+$env:JAVA_HOME = "$HOME\.jdks\temurin-25.0.2"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+mvn -version
+```
+
+Si tu JDK 25 está en otra ubicación, ajusta `JAVA_HOME`.
 
 ## Base de datos local
 
