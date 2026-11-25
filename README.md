@@ -30,7 +30,7 @@ Configura las variables en PowerShell antes de iniciar Spring Boot. Ajusta usuar
 $env:DB_URL = "jdbc:mariadb://localhost:3308/viajes_chile"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = ""
-$env:CORS_ORIGINS = "http://localhost:5173"
+$env:CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 $bytes = New-Object byte[] 48
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -63,6 +63,8 @@ Si MariaDB no está en ejecución, la base no existe o las credenciales no son c
 ## Conexión desde el frontend
 
 En desarrollo, Vite sirve el frontend en el puerto **5173** y reenvía `/api` a Spring Boot. Para otros orígenes, configura `CORS_ORIGINS` con el origen exacto del frontend. En producción, configura además `VITE_API_BASE_URL`, `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET` y, según el proveedor, `GOOGLE_CLIENT_ID`, `FRONTEND_URL` y `REFRESH_COOKIE_SECURE=true`.
+
+Separa varios orígenes con comas, sin espacios; el proxy también reenvía el encabezado `Origin`. Un origen no permitido recibe `403 Invalid CORS request`, incluso al cerrar sesión.
 
 No uses las credenciales locales por defecto en un despliegue público. La cookie de refresh requiere HTTPS cuando se habilita `REFRESH_COOKIE_SECURE`.
 
