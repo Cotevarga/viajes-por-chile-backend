@@ -21,6 +21,12 @@ public class Sale {
     @Column(name = "total_amount", nullable = false)
     private long totalAmount;
 
+    @Column(name = "buyer_name", length = 150)
+    private String buyerName;
+
+    @Column(name = "buyer_email", length = 190)
+    private String buyerEmail;
+
     @Column(nullable = false, length = 20)
     private String status = "pagada";
 
@@ -40,6 +46,10 @@ public class Sale {
     public void setSaleCode(String saleCode) { this.saleCode = saleCode; }
     public long getTotalAmount() { return totalAmount; }
     public void setTotalAmount(long totalAmount) { this.totalAmount = totalAmount; }
+    public String getBuyerName() { return buyerName; }
+    public void setBuyerName(String buyerName) { this.buyerName = buyerName; }
+    public String getBuyerEmail() { return buyerEmail; }
+    public void setBuyerEmail(String buyerEmail) { this.buyerEmail = buyerEmail; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Long getUserId() { return userId; }

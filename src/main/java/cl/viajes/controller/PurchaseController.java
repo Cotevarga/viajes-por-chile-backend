@@ -25,7 +25,9 @@ public class PurchaseController {
             @Valid @RequestBody PurchaseRequest request,
             org.springframework.security.core.Authentication authentication
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(purchaseService.createPurchase(request, userId(authentication)));
+        boolean seller = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_SELLER".equals(authority.getAuthority()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(purchaseService.createPurchase(request, seller ? null : userId(authentication)));
     }
 
     @GetMapping("/mine")

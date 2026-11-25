@@ -20,6 +20,9 @@ public class ContactMessage {
     @Column(nullable = false, length = 190)
     private String email;
 
+    @Column(length = 40)
+    private String telephone;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
@@ -45,6 +48,8 @@ public class ContactMessage {
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getTelephone() { return telephone; }
+    public void setTelephone(String telephone) { this.telephone = telephone; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
     public String getType() { return type; }

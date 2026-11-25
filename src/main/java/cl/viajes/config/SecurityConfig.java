@@ -41,7 +41,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/google",
                                 "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
-                                "/api/v1/contact-messages", "/api/v1/purchases").access(permitUnlessSeller())
+                                "/api/v1/contact-messages").access(permitUnlessSeller())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/purchases").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/sales/cancellations").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/tickets/**").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                                 .access(permitUnlessSeller())
                         .requestMatchers(HttpMethod.GET,

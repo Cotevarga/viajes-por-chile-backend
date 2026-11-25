@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
     List<ActivityLog> findTop200ByCreatedAtGreaterThanEqualOrderByCreatedAtDescIdDesc(LocalDateTime from);
+    List<ActivityLog> findByCreatedAtBetweenOrderByCreatedAtDescIdDesc(LocalDateTime from, LocalDateTime to);
 }

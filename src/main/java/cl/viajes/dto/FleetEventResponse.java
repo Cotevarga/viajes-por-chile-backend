@@ -9,6 +9,7 @@ public record FleetEventResponse(
         Long id,
         String vehicle,
         String description,
+        String responsible,
         String status,
         @JsonProperty("admin_notes") String adminNotes,
         @JsonProperty("reported_at") LocalDateTime reportedAt,
@@ -16,7 +17,7 @@ public record FleetEventResponse(
 ) {
     public static FleetEventResponse from(FleetEvent event) {
         return new FleetEventResponse(
-                event.getId(), event.getVehicle(), event.getDescription(), event.getStatus(),
+                event.getId(), event.getVehicle(), event.getDescription(), event.getResponsible(), event.getStatus(),
                 event.getAdminNotes(), event.getReportedAt(), event.getResolvedAt()
         );
     }

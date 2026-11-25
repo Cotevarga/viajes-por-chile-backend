@@ -28,18 +28,19 @@ public class SaleService {
     }
 
     @Transactional
-    public String cancel(SaleCancellationRequest request) {
+    public String cancel(SaleCancellationRequest request, String actor) {
         boolean hasTicketCode = request.ticketCode() != null && !request.ticketCode().isBlank();
         boolean hasSaleCode = request.saleCode() != null && !request.saleCode().isBlank();
         if (!hasTicketCode && !hasSaleCode) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Indica el boleto o la compra a cancelar");
         }
 
-        Ticket requestedTicket = hasTicketCode
-                ? ticketRepository.findByTicketCode(request.ticketCode().trim().toLowerCase(Locale.ROOT))
+        String ticketCode = hasTicketCode ? request.ticketCode().trim().toLowerCase(Locale.ROOT) : null;
+        TicketRepository.TicketLocation requestedTicket = hasTicketCode
+                ? ticketRepository.findLocationByCode(ticketCode)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Boleto no encontrado"))
                 : null;
-        String saleCode = hasTicketCode ? requestedTicket.getSale().getSaleCode() : request.saleCode().trim().toLowerCase(Locale.ROOT);
+        String saleCode = hasTicketCode ? requestedTicket.getSaleCode() : request.saleCode().trim().toLowerCase(Locale.ROOT);
         Sale sale = saleRepository.findBySaleCodeForUpdate(saleCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Compra no encontrada"));
 
@@ -53,12 +54,13 @@ public class SaleService {
         String description;
         if (hasTicketCode) {
             Ticket ticket = activeTickets.stream()
-                    .filter(item -> item.getTicketCode().equals(requestedTicket.getTicketCode()))
+                    .filter(item -> item.getTicketCode().equals(ticketCode))
                     .findFirst()
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Ese boleto o compra ya estaba cancelado"));
             ticket.setStatus("cancelado");
             ticket.setCancelledAt(cancelledAt);
             ticket.setCancelReason(reason.isEmpty() ? null : reason);
+            ticket.setCancelledBy(actor);
             description = "Boleto cancelado: " + ticket.getPassengerName() + ", asiento " + ticket.getSeatNumber()
                     + ", " + ticket.getTripTitle() + " (compra " + sale.getSaleCode().substring(0, 8) + ")";
         } else {
@@ -66,6 +68,7 @@ public class SaleService {
                 ticket.setStatus("cancelado");
                 ticket.setCancelledAt(cancelledAt);
                 ticket.setCancelReason(reason.isEmpty() ? null : reason);
+                ticket.setCancelledBy(actor);
             });
             description = "Compra cancelada completa (" + sale.getSaleCode().substring(0, 8) + ")";
         }
@@ -75,7 +78,7 @@ public class SaleService {
         long cancelledCount = allTickets.stream().filter(ticket -> "cancelado".equals(ticket.getStatus())).count();
         sale.setStatus(activeCount == 0 ? "anulada" : (cancelledCount > 0 ? "parcial" : "pagada"));
         saleRepository.save(sale);
-        activityLog.record("cancelacion", description + (reason.isEmpty() ? "" : ". Motivo: " + reason), "Administrador");
+        activityLog.record("cancelacion", description + (reason.isEmpty() ? "" : ". Motivo: " + reason), actor);
         return sale.getStatus();
     }
 }

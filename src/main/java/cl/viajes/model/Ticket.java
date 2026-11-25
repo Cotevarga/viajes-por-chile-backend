@@ -28,6 +28,9 @@ public class Ticket {
     @Column(name = "trip_title", nullable = false, length = 180)
     private String tripTitle;
 
+    @Column(length = 120)
+    private String origin;
+
     @Column(nullable = false, length = 120)
     private String destination;
 
@@ -48,6 +51,15 @@ public class Ticket {
 
     @Column(name = "passenger_rut", nullable = false, length = 20)
     private String passengerRut;
+
+    @Column(name = "passenger_email", length = 190)
+    private String passengerEmail;
+
+    @Column(name = "passenger_phone", length = 40)
+    private String passengerPhone;
+
+    @Column(name = "seat_class", length = 40)
+    private String seatClass;
 
     @Column(name = "original_price", nullable = false)
     private long originalPrice;
@@ -74,6 +86,9 @@ public class Ticket {
     @Column(name = "cancel_reason", length = 300)
     private String cancelReason;
 
+    @Column(name = "cancelled_by", length = 150)
+    private String cancelledBy;
+
     public Long getId() { return id; }
     public Sale getSale() { return sale; }
     public void setSale(Sale sale) { this.sale = sale; }
@@ -83,6 +98,8 @@ public class Ticket {
     public void setProductId(String productId) { this.productId = productId; }
     public String getTripTitle() { return tripTitle; }
     public void setTripTitle(String tripTitle) { this.tripTitle = tripTitle; }
+    public String getOrigin() { return origin; }
+    public void setOrigin(String origin) { this.origin = origin; }
     public String getDestination() { return destination; }
     public void setDestination(String destination) { this.destination = destination; }
     public LocalDate getScheduleDate() { return scheduleDate; }
@@ -97,6 +114,12 @@ public class Ticket {
     public void setPassengerName(String passengerName) { this.passengerName = passengerName; }
     public String getPassengerRut() { return passengerRut; }
     public void setPassengerRut(String passengerRut) { this.passengerRut = passengerRut; }
+    public String getPassengerEmail() { return passengerEmail; }
+    public void setPassengerEmail(String passengerEmail) { this.passengerEmail = passengerEmail; }
+    public String getPassengerPhone() { return passengerPhone; }
+    public void setPassengerPhone(String passengerPhone) { this.passengerPhone = passengerPhone; }
+    public String getSeatClass() { return seatClass; }
+    public void setSeatClass(String seatClass) { this.seatClass = seatClass; }
     public long getOriginalPrice() { return originalPrice; }
     public void setOriginalPrice(long originalPrice) { this.originalPrice = originalPrice; }
     public int getDiscountPercent() { return discountPercent; }
@@ -112,4 +135,6 @@ public class Ticket {
     public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
     public String getCancelReason() { return cancelReason; }
     public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
+    public String getCancelledBy() { return cancelledBy; }
+    public void setCancelledBy(String cancelledBy) { this.cancelledBy = cancelledBy; }
 }

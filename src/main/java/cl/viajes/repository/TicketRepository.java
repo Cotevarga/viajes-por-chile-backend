@@ -14,13 +14,25 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
+    interface TicketLocation {
+        String getProductId();
+        String getSaleCode();
+    }
+
+    @Query("select t.productId as productId, t.sale.saleCode as saleCode from Ticket t where t.ticketCode = :code")
+    Optional<TicketLocation> findLocationByCode(@Param("code") String code);
     Optional<Ticket> findByTicketCode(String ticketCode);
     List<Ticket> findBySale_IdOrderByIdAsc(Long saleId);
     List<Ticket> findByProductIdAndScheduleDateAndDepartureTimeAndStatus(
             String productId, LocalDate scheduleDate, LocalTime departureTime, String status
     );
-    List<Ticket> findByStatusAndCancelledAtGreaterThanEqualOrderByCancelledAtDesc(
-            String status, LocalDateTime from
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Ticket t where t.productId = :productId and t.scheduleDate = :date and t.departureTime = :time and t.status = 'activo'")
+    List<Ticket> findOccupiedForUpdate(@Param("productId") String productId, @Param("date") LocalDate date,
+                                       @Param("time") LocalTime time);
+    List<Ticket> findByStatusAndCancelledAtBetweenOrderByCancelledAtDesc(
+            String status, LocalDateTime from, LocalDateTime to
     );
     List<Ticket> findByStatusAndScheduleDateGreaterThanEqual(String status, LocalDate date);
 

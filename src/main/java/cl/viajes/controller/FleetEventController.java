@@ -29,8 +29,9 @@ public class FleetEventController {
     }
 
     @PostMapping
-    public ResponseEntity<FleetEventResponse> create(@Valid @RequestBody FleetEventCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
+    public ResponseEntity<FleetEventResponse> create(@Valid @RequestBody FleetEventCreateRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request, "Usuario #" + authentication.getName()));
     }
 
     @PutMapping("/{id}")

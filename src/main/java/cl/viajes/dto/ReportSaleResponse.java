@@ -9,13 +9,15 @@ import java.util.List;
 public record ReportSaleResponse(
         @JsonProperty("sale_code") String saleCode,
         @JsonProperty("total_amount") long totalAmount,
+        @JsonProperty("buyer_name") String buyerName,
+        @JsonProperty("buyer_email") String buyerEmail,
         String status,
         @JsonProperty("created_at") LocalDateTime createdAt,
         List<ReportTicketResponse> tickets
 ) {
     public static ReportSaleResponse from(Sale sale) {
         return new ReportSaleResponse(
-                sale.getSaleCode(), sale.getTotalAmount(), sale.getStatus(), sale.getCreatedAt(),
+                sale.getSaleCode(), sale.getTotalAmount(), sale.getBuyerName(), sale.getBuyerEmail(), sale.getStatus(), sale.getCreatedAt(),
                 sale.getTickets().stream().map(ReportTicketResponse::from).toList()
         );
     }

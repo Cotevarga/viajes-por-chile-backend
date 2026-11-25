@@ -20,6 +20,9 @@ public class FleetEvent {
     @Column(nullable = false, length = 500)
     private String description;
 
+    @Column(length = 150)
+    private String responsible;
+
     @Column(nullable = false, length = 40)
     private String status = "con_falla";
 
@@ -42,6 +45,8 @@ public class FleetEvent {
     public void setVehicle(String vehicle) { this.vehicle = vehicle; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getResponsible() { return responsible; }
+    public void setResponsible(String responsible) { this.responsible = responsible; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getAdminNotes() { return adminNotes; }

@@ -7,6 +7,7 @@ import cl.viajes.model.Ticket;
 import cl.viajes.repository.ProductRepository;
 import cl.viajes.repository.SaleRepository;
 import cl.viajes.repository.TicketRepository;
+import cl.viajes.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,17 +35,20 @@ public class PurchaseService {
     private final SaleRepository saleRepository;
     private final TicketRepository ticketRepository;
     private final ActivityLogService activityLog;
+    private final UserRepository userRepository;
 
     public PurchaseService(
             ProductRepository productRepository,
             SaleRepository saleRepository,
             TicketRepository ticketRepository,
-            ActivityLogService activityLog
+            ActivityLogService activityLog,
+            UserRepository userRepository
     ) {
         this.productRepository = productRepository;
         this.saleRepository = saleRepository;
         this.ticketRepository = ticketRepository;
         this.activityLog = activityLog;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -121,6 +125,8 @@ public class PurchaseService {
                 ticket.setTicketCode(newCode());
                 ticket.setProductId(product.getId());
                 ticket.setTripTitle(product.getTitle());
+                String[] route = product.getTitle().split(" - ", 2);
+                ticket.setOrigin(route.length == 2 ? route[0].trim() : null);
                 ticket.setDestination(product.getDestination());
                 ticket.setScheduleDate(schedule.date());
                 ticket.setDepartureTime(schedule.time());
@@ -128,6 +134,11 @@ public class PurchaseService {
                 ticket.setSeatNumber(seats.get(index));
                 ticket.setPassengerName(name);
                 ticket.setPassengerRut(rut);
+                ticket.setPassengerEmail(passenger.email() == null ? null : passenger.email().trim());
+                ticket.setPassengerPhone(passenger.telephone() == null ? null : passenger.telephone().trim());
+                ticket.setSeatClass(product.getDistanceKm() >= 400 || "Salón Cama".equals(product.getType())
+                        ? ("salon".equalsIgnoreCase(item.seatClass()) ? "Salón Cama" : "Semi Cama")
+                        : product.getType());
                 ticket.setOriginalPrice(originalPrice);
                 ticket.setDiscountPercent(discount);
                 ticket.setPricePaid(pricePaid);
@@ -141,6 +152,14 @@ public class PurchaseService {
         sale.setSaleCode(newCode());
         sale.setTotalAmount(total);
         sale.setUserId(userId);
+        sale.setBuyerName(request.buyerName() == null ? null : request.buyerName().trim());
+        sale.setBuyerEmail(request.buyerEmail() == null ? null : request.buyerEmail().trim());
+        if (userId != null) {
+            userRepository.findById(userId).ifPresent(user -> {
+                sale.setBuyerName(user.getName());
+                sale.setBuyerEmail(user.getEmail());
+            });
+        }
         tickets.forEach(sale::addTicket);
         saleRepository.save(sale);
         String actor = tickets.get(0).getPassengerName();
@@ -184,6 +203,59 @@ public class PurchaseService {
     @Transactional(readOnly = true)
     public List<OrderSummaryResponse> listOrders() {
         return saleRepository.findAllOrderSummaries();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> searchOrders(String search, LocalDate date) {
+        return saleRepository.searchOrders(search == null ? "" : search.trim().toLowerCase(Locale.ROOT),
+                date == null ? null : date.atStartOfDay(), date == null ? null : date.plusDays(1).atStartOfDay());
+    }
+
+    @Transactional
+    public TicketResponse updateTicket(String ticketCode, TicketUpdateRequest request, String actor) {
+        String code = ticketCode.trim().toLowerCase(Locale.ROOT);
+        TicketRepository.TicketLocation location = ticketRepository.findLocationByCode(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Boleto no encontrado"));
+        Product product = productRepository.findByIdForUpdate(location.getProductId())
+                .orElseThrow(() -> conflict("La ruta del boleto ya no existe"));
+        if (!"Activo".equals(product.getStatus())) throw conflict("La ruta ya no está disponible");
+        Sale sale = saleRepository.findBySaleCodeForUpdate(location.getSaleCode())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Compra no encontrada"));
+        Ticket ticket = ticketRepository.findActiveTicketsBySaleIdForUpdate(sale.getId()).stream()
+                .filter(item -> code.equals(item.getTicketCode()))
+                .findFirst().orElseThrow(() -> conflict("El boleto ya está cancelado"));
+
+        String name = request.passengerName().trim();
+        String rut = request.passengerRut().replaceAll("[^0-9kK]", "");
+        if (name.isBlank() || !rut.matches("\\d{7,8}[0-9kK]")) {
+            throw invalid("Ingresa nombre y RUT válido para el pasajero");
+        }
+        String seatClass = ticket.getSeatClass();
+        if (seatClass == null && (ticket.getDistanceKm() >= 400 || "Salón Cama".equals(product.getType()))) {
+            seatClass = ticket.getSeatNumber() > 52 ? "Salón Cama" : "Semi Cama";
+        }
+        String classKey = "Salón Cama".equals(seatClass) ? "salon" : "semi";
+        PurchaseItem item = new PurchaseItem(product.getSlug(), request.scheduleId(), false, null, null,
+                classKey, List.of(new PassengerRequest(name, rut, request.seatNumber())));
+        TripSchedule schedule = resolveSchedule(product, item);
+        SeatRange range = seatRange(product, item);
+        List<Ticket> occupied = ticketRepository.findOccupiedForUpdate(product.getId(), schedule.date(), schedule.time());
+        Set<Integer> taken = new HashSet<>();
+        occupied.stream().filter(other -> !other.getId().equals(ticket.getId())).forEach(other -> taken.add(other.getSeatNumber()));
+        List<Integer> seats = seatsForPassengers(range, taken, item.passengers(), schedule.capacity());
+        if (seats == null) throw conflict("El asiento seleccionado ya no está disponible");
+        ticket.setScheduleDate(schedule.date());
+        ticket.setDepartureTime(schedule.time());
+        ticket.setPlatform(schedule.platform());
+        ticket.setSeatNumber(seats.get(0));
+        ticket.setPassengerName(name);
+        ticket.setPassengerRut(rut);
+        ticket.setPassengerEmail(request.passengerEmail() == null ? null : request.passengerEmail().trim());
+        ticket.setPassengerPhone(request.passengerPhone() == null ? null : request.passengerPhone().trim());
+        ticket.setSeatClass(seatClass);
+        activityLog.record("reprogramacion", "Boleto " + code.substring(0, Math.min(8, code.length()))
+                + " actualizado: " + schedule.date() + " " + schedule.time() + ", asiento " + seats.get(0), actor);
+        return TicketResponse.from(ticket);
     }
 
     private TripSchedule resolveSchedule(Product product, PurchaseItem item) {

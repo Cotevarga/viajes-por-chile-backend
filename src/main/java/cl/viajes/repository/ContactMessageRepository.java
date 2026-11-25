@@ -9,5 +9,5 @@ import java.util.List;
 public interface ContactMessageRepository extends JpaRepository<ContactMessage, Long> {
     List<ContactMessage> findAllByOrderByCreatedAtDescIdDesc();
     long countByStatus(String status);
-    long countByTypeAndStatusNotAndCreatedAtGreaterThanEqual(String type, String excludedStatus, LocalDateTime from);
+    long countByTypeAndStatusNotAndCreatedAtBetween(String type, String excludedStatus, LocalDateTime from, LocalDateTime to);
 }

@@ -29,17 +29,18 @@ public class FleetEventService {
                 .toList();
     }
 
-    public FleetEventResponse create(FleetEventCreateRequest request) {
+    public FleetEventResponse create(FleetEventCreateRequest request, String actor) {
         String status = request.status() == null ? "con_falla" : request.status();
         FleetEvent event = new FleetEvent();
         event.setVehicle(request.vehicle().trim());
         event.setDescription(request.description().trim());
+        event.setResponsible(actor);
         event.setStatus(status);
         if ("reparado".equals(status)) {
             event.setResolvedAt(LocalDateTime.now());
         }
         repository.save(event);
-        activityLog.record("flota", "Reporte de bus " + event.getVehicle() + ": " + event.getDescription(), "Administrador");
+        activityLog.record("flota", "Reporte de bus " + event.getVehicle() + ": " + event.getDescription(), actor);
         return FleetEventResponse.from(event);
     }
 

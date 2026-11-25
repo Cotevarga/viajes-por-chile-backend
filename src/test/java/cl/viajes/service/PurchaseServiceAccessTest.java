@@ -34,7 +34,8 @@ class PurchaseServiceAccessTest {
 
     @BeforeEach
     void setUp() {
-        purchaseService = new PurchaseService(productRepository, saleRepository, ticketRepository, activityLog);
+        purchaseService = new PurchaseService(productRepository, saleRepository, ticketRepository, activityLog,
+                org.mockito.Mockito.mock(cl.viajes.repository.UserRepository.class));
     }
 
     @Test

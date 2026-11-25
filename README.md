@@ -22,6 +22,8 @@ Si tu JDK 25 está en otra ubicación, ajusta `JAVA_HOME`.
 
 Crea/carga la base de datos `viajes_chile` usando `database/schema.sql`. Para una base existente, aplica las migraciones pendientes de `database/migrations/` en orden. La aplicación no crea ni migra el esquema automáticamente (`spring.jpa.hibernate.ddl-auto=none`).
 
+La migración `database/migrations/20261124_reporting_and_pos.sql` agrega campos opcionales para reportes, datos de pasajeros y auditoría. Los registros anteriores conservan valores desconocidos; no se reconstruyen datos históricos.
+
 Configura las variables en PowerShell antes de iniciar Spring Boot. Ajusta usuario y contraseña a tu instalación de MariaDB:
 
 ```powershell
@@ -48,6 +50,8 @@ mvn test
 mvn spring-boot:run
 ```
 
+La prueba opcional `SaleRepositoryMariaDbTest` requiere una base MariaDB desechable con el esquema actualizado. Apunta `DB_URL` a esa base, configura sus credenciales y define `REPORTING_POS_DB_TEST=true` antes de ejecutar `mvn test`; no uses una base compartida.
+
 La API escucha en el puerto **8080** por defecto; si el proveedor define `PORT`, Spring Boot lo utiliza:
 
 - Swagger UI: <http://localhost:8080/swagger-ui.html> (también disponible en <http://localhost:8080/swagger-ui/index.html>).
@@ -61,3 +65,11 @@ Si MariaDB no está en ejecución, la base no existe o las credenciales no son c
 En desarrollo, Vite sirve el frontend en el puerto **5173** y reenvía `/api` a Spring Boot. Para otros orígenes, configura `CORS_ORIGINS` con el origen exacto del frontend. En producción, configura además `VITE_API_BASE_URL`, `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET` y, según el proveedor, `GOOGLE_CLIENT_ID`, `FRONTEND_URL` y `REFRESH_COOKIE_SECURE=true`.
 
 No uses las credenciales locales por defecto en un despliegue público. La cookie de refresh requiere HTTPS cuando se habilita `REFRESH_COOKIE_SECURE`.
+
+## Vendedor y reportes
+
+SELLER y ADMIN pueden emitir compras, consultar órdenes, actualizar boletos con `PUT /api/v1/tickets/{ticketCode}` y anular ventas o boletos con `POST /api/v1/sales/cancellations`. Las actualizaciones mantienen el precio y la clase y comprueban disponibilidad con bloqueo transaccional. Las compras y anulaciones son simuladas: no efectúan cobros ni reembolsos reales.
+
+El reporte administrativo incluye ventas, cancelaciones, eventos de flota, mensajes y sucesos del período. Los datos no registrados en operaciones antiguas se devuelven sin valor; el cliente los identifica como «No disponible».
+
+La búsqueda `GET /api/v1/ordenes` acepta `search` (código, nombre o RUT) y `date` (`YYYY-MM-DD`). `GET /api/v1/reports` acepta `period`: `day`, `week`, `month` o `year`. Swagger y OpenAPI describen el contrato; las pruebas disponibles no cubren cada endpoint por HTTP.

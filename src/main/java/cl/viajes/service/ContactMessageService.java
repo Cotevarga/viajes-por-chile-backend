@@ -46,6 +46,7 @@ public class ContactMessageService {
         ContactMessage message = new ContactMessage();
         message.setName(request.name().trim());
         message.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
+        message.setTelephone(request.telephone() == null ? null : request.telephone().trim());
         message.setMessage(request.message().trim());
         message.setType(request.isComplaint() ? "reclamo" : "mensaje");
         message.setStatus("no_leido");

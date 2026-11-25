@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
     Optional<Sale> findBySaleCode(String saleCode);
-    List<Sale> findByCreatedAtGreaterThanEqualOrderByCreatedAtDescIdDesc(LocalDateTime from);
+    List<Sale> findByCreatedAtBetweenOrderByCreatedAtDescIdDesc(LocalDateTime from, LocalDateTime to);
 
     @Query("""
             select new cl.viajes.dto.OrderSummaryResponse(
@@ -25,6 +25,24 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             order by s.createdAt desc, s.id desc
             """)
     List<OrderSummaryResponse> findAllOrderSummaries();
+
+    @Query("""
+            select new cl.viajes.dto.OrderSummaryResponse(
+                s.saleCode, s.totalAmount, s.status, s.createdAt, count(t.id)
+            )
+            from Sale s left join s.tickets t
+            where (:search = '' or lower(s.saleCode) like concat('%', :search, '%')
+                or exists (select t2.id from Ticket t2 where t2.sale = s
+                    and (lower(t2.passengerName) like concat('%', :search, '%')
+                        or lower(t2.passengerRut) like concat('%', :search, '%'))))
+              and (:fromDate is null or s.createdAt >= :fromDate)
+              and (:toDate is null or s.createdAt < :toDate)
+            group by s.id, s.saleCode, s.totalAmount, s.status, s.createdAt
+            order by s.createdAt desc, s.id desc
+            """)
+    List<OrderSummaryResponse> searchOrders(@Param("search") String search,
+                                            @Param("fromDate") LocalDateTime fromDate,
+                                            @Param("toDate") LocalDateTime toDate);
 
     @Query("""
             select new cl.viajes.dto.OrderSummaryResponse(

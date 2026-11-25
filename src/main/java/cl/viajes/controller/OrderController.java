@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Tag(name = "Órdenes", description = "Consulta de órdenes de venta (vendedor y administrador)")
@@ -25,8 +27,9 @@ public class OrderController {
 
     @Operation(summary = "Listar órdenes", description = "Devuelve el resumen de todas las órdenes. Requiere rol SELLER o ADMIN.")
     @GetMapping
-    public List<OrderSummaryResponse> list() {
-        return purchaseService.listOrders();
+    public List<OrderSummaryResponse> list(@RequestParam(required = false) String search,
+                                           @RequestParam(required = false) LocalDate date) {
+        return purchaseService.searchOrders(search, date);
     }
 
     @Operation(summary = "Detalle de una orden", description = "Devuelve la orden con sus boletos. Requiere rol SELLER o ADMIN.")

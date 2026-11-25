@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   email VARCHAR(190) NOT NULL,
+  telephone VARCHAR(40) NULL,
   message TEXT NOT NULL,
   type ENUM('mensaje', 'reclamo') NOT NULL DEFAULT 'mensaje',
   status ENUM('no_leido', 'leido', 'aplicado', 'archivado', 'eliminado') NOT NULL DEFAULT 'no_leido',
@@ -92,6 +93,8 @@ CREATE TABLE IF NOT EXISTS sales (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   sale_code CHAR(32) NOT NULL UNIQUE,
   total_amount INT UNSIGNED NOT NULL,
+  buyer_name VARCHAR(150) NULL,
+  buyer_email VARCHAR(190) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -101,6 +104,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   ticket_code CHAR(32) NOT NULL UNIQUE,
   product_id VARCHAR(32) NOT NULL,
   trip_title VARCHAR(180) NOT NULL,
+  origin VARCHAR(120) NULL,
   destination VARCHAR(120) NOT NULL,
   distance_km INT UNSIGNED NOT NULL DEFAULT 0,
   schedule_date DATE NOT NULL,
@@ -109,6 +113,9 @@ CREATE TABLE IF NOT EXISTS tickets (
   seat_number SMALLINT UNSIGNED NOT NULL,
   passenger_name VARCHAR(150) NOT NULL,
   passenger_rut VARCHAR(20) NOT NULL,
+  passenger_email VARCHAR(190) NULL,
+  passenger_phone VARCHAR(40) NULL,
+  seat_class VARCHAR(40) NULL,
   original_price INT UNSIGNED NOT NULL,
   discount_percent TINYINT UNSIGNED NOT NULL DEFAULT 0,
   price_paid INT UNSIGNED NOT NULL,
@@ -129,6 +136,7 @@ ALTER TABLE tickets
   ADD COLUMN IF NOT EXISTS status ENUM('activo', 'cancelado') NOT NULL DEFAULT 'activo',
   ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP NULL DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS cancel_reason VARCHAR(300) NULL,
+  ADD COLUMN IF NOT EXISTS cancelled_by VARCHAR(150) NULL,
   ADD COLUMN IF NOT EXISTS distance_km INT UNSIGNED NOT NULL DEFAULT 0;
 
 UPDATE tickets t
@@ -143,6 +151,7 @@ CREATE TABLE IF NOT EXISTS fleet_events (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   vehicle VARCHAR(60) NOT NULL,
   description VARCHAR(500) NOT NULL,
+  responsible VARCHAR(150) NULL,
   status ENUM('con_falla', 'en_servicio_tecnico', 'reparado', 'fuera_de_servicio') NOT NULL DEFAULT 'con_falla',
   admin_notes TEXT NULL,
   reported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

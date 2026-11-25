@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@io.swagger.v3.oas.annotations.tags.Tag(name = "Ventas", description = "Anulación de boletos y ventas (administrador)")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Ventas", description = "Anulación de boletos y ventas (vendedor y administrador)")
 @RestController
 @RequestMapping("/api/v1/sales")
 public class SaleController {
@@ -19,7 +19,8 @@ public class SaleController {
     }
 
     @PostMapping("/cancellations")
-    public Map<String, Object> cancel(@Valid @RequestBody SaleCancellationRequest request) {
-        return Map.of("cancelled", true, "sale_status", saleService.cancel(request));
+    public Map<String, Object> cancel(@Valid @RequestBody SaleCancellationRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        return Map.of("cancelled", true, "sale_status", saleService.cancel(request, "Usuario #" + authentication.getName()));
     }
 }

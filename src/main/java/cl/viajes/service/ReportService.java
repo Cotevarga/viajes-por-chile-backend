@@ -1,6 +1,7 @@
 package cl.viajes.service;
 
 import cl.viajes.dto.ActivityLogResponse;
+import cl.viajes.dto.ContactMessageResponse;
 import cl.viajes.dto.FleetEventResponse;
 import cl.viajes.dto.ReportSaleResponse;
 import cl.viajes.dto.ReportTicketResponse;
@@ -62,13 +63,13 @@ public class ReportService {
         LocalDateTime from = startDate.atStartOfDay();
         LocalDateTime now = LocalDateTime.now();
 
-        List<Sale> sales = saleRepository.findByCreatedAtGreaterThanEqualOrderByCreatedAtDescIdDesc(from);
+        List<Sale> sales = saleRepository.findByCreatedAtBetweenOrderByCreatedAtDescIdDesc(from, now);
         List<Ticket> activeTickets = sales.stream()
                 .flatMap(sale -> sale.getTickets().stream())
                 .filter(ticket -> "activo".equals(ticket.getStatus()))
                 .toList();
         List<Ticket> cancelledTickets = ticketRepository
-                .findByStatusAndCancelledAtGreaterThanEqualOrderByCancelledAtDesc("cancelado", from);
+                .findByStatusAndCancelledAtBetweenOrderByCancelledAtDesc("cancelado", from, now);
         List<Ticket> scheduledTickets = ticketRepository.findByStatusAndScheduleDateGreaterThanEqual("activo", startDate);
         Set<String> completedTrips = new HashSet<>();
         for (Ticket ticket : scheduledTickets) {
@@ -83,14 +84,14 @@ public class ReportService {
         metrics.put("completedTrips", completedTrips.size());
         metrics.put("cancellations", cancelledTickets.size());
         metrics.put("cancelledAmount", cancelledTickets.stream().mapToLong(Ticket::getPricePaid).sum());
-        metrics.put("complaints", contactMessageRepository.countByTypeAndStatusNotAndCreatedAtGreaterThanEqual("reclamo", "eliminado", from));
-        metrics.put("messages", contactMessageRepository.countByTypeAndStatusNotAndCreatedAtGreaterThanEqual("mensaje", "eliminado", from));
+        metrics.put("complaints", contactMessageRepository.countByTypeAndStatusNotAndCreatedAtBetween("reclamo", "eliminado", from, now));
+        metrics.put("messages", contactMessageRepository.countByTypeAndStatusNotAndCreatedAtBetween("mensaje", "eliminado", from, now));
         metrics.put("unreadMessages", contactMessageRepository.countByStatus("no_leido"));
-        metrics.put("newUsers", userRepository.countByCreatedAtGreaterThanEqual(from));
+        metrics.put("newUsers", userRepository.countByCreatedAtBetween(from, now));
         metrics.put("openFleetEvents", fleetEventRepository.countByStatusNot("reparado"));
 
         List<FleetEventResponse> fleetEvents = fleetEventRepository.findAllByOrderByReportedAtDesc().stream()
-                .filter(event -> !event.getReportedAt().isBefore(from) || !"reparado".equals(event.getStatus()))
+                .filter(event -> !event.getReportedAt().isBefore(from) && !event.getReportedAt().isAfter(now))
                 .sorted(Comparator.comparing((FleetEvent event) -> "reparado".equals(event.getStatus()))
                         .thenComparing(FleetEvent::getReportedAt, Comparator.reverseOrder()))
                 .map(FleetEventResponse::from)
@@ -102,7 +103,11 @@ public class ReportService {
         report.put("purchases", sales.stream().map(ReportSaleResponse::from).toList());
         report.put("cancellations", cancelledTickets.stream().map(ReportTicketResponse::from).toList());
         report.put("fleetEvents", fleetEvents);
-        report.put("activity", activityLogRepository.findTop200ByCreatedAtGreaterThanEqualOrderByCreatedAtDescIdDesc(from)
+        report.put("messages", contactMessageRepository.findAllByOrderByCreatedAtDescIdDesc().stream()
+                .filter(message -> !"eliminado".equals(message.getStatus()))
+                .filter(message -> !message.getCreatedAt().isBefore(from) && !message.getCreatedAt().isAfter(now))
+                .map(ContactMessageResponse::from).toList());
+        report.put("activity", activityLogRepository.findByCreatedAtBetweenOrderByCreatedAtDescIdDesc(from, now)
                 .stream().map(ActivityLogResponse::from).toList());
         return report;
     }

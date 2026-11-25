@@ -9,6 +9,7 @@ public record ContactMessageResponse(
         Long id,
         String name,
         String email,
+        String telephone,
         String message,
         String type,
         String status,
@@ -18,7 +19,7 @@ public record ContactMessageResponse(
 ) {
     public static ContactMessageResponse from(ContactMessage message) {
         return new ContactMessageResponse(
-                message.getId(), message.getName(), message.getEmail(), message.getMessage(),
+                message.getId(), message.getName(), message.getEmail(), message.getTelephone(), message.getMessage(),
                 message.getType(), message.getStatus(), message.getAdminNotes(),
                 message.getCreatedAt(), message.getUpdatedAt()
         );
